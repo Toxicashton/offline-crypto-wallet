@@ -2,50 +2,70 @@ import 'dart:convert';
 import 'package:elliptic/elliptic.dart';
 import 'package:crypto/crypto.dart';
 import 'package:ecdsa/ecdsa.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // <--- NEW IMPORT
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bip39/bip39.dart' as bip39; // <--- NEW BIP-39 IMPORT!
 
 class WalletService {
   // Use the secp256k1 curve (Standard for Bitcoin/Ethereum)
   final _curve = getSecp256k1();
 
-  // --- NEW: SAVE WALLET TO PHONE MEMORY ---
+  // ==========================================
+  // --- NEW: 12-WORD SEED PHRASE LOGIC ---
+  // ==========================================
+
+  // 1. Generate a brand new 12-word phrase
+  String generateMnemonic() {
+    return bip39.generateMnemonic(); // e.g., "apple zebra bridge..."
+  }
+
+  // 2. Convert the 12 words into a secure Private Key
+  PrivateKey getPrivateKeyFromMnemonic(String mnemonic) {
+    // Check if the words are valid dictionary words
+    if (!bip39.validateMnemonic(mnemonic)) {
+      throw Exception("Invalid 12-word phrase");
+    }
+
+    // Convert words to a cryptographic seed hex (128 characters long)
+    String seedHex = bip39.mnemonicToSeedHex(mnemonic);
+
+    // We take the first 64 characters (32 bytes) to form our secp256k1 private key
+    String privateKeyHex = seedHex.substring(0, 64);
+
+    return PrivateKey.fromHex(_curve, privateKeyHex);
+  }
+
+  // ==========================================
+  // --- EXISTING PHONE MEMORY LOGIC ---
+  // ==========================================
+
   Future<void> saveWallet(PrivateKey privateKey) async {
     final prefs = await SharedPreferences.getInstance();
-    // We save the Private Key as a HEX string
     await prefs.setString('private_key', privateKey.toHex());
   }
 
-  // --- NEW: LOAD WALLET FROM PHONE MEMORY ---
   Future<PrivateKey?> loadWallet() async {
     final prefs = await SharedPreferences.getInstance();
     String? keyHex = prefs.getString('private_key');
 
-    if (keyHex == null) return null; // No account found
-
-    // Convert the Hex string back to a Private Key object
+    if (keyHex == null) return null;
     return PrivateKey.fromHex(_curve, keyHex);
   }
 
-  // --- NEW: LOGOUT (DELETE WALLET) ---
   Future<void> deleteWallet() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('private_key');
   }
 
-  // 1. Generate a new "Account" (Private/Public Key Pair)
-  PrivateKey generateWallet() {
-    var privateKey = _curve.generatePrivateKey();
-    return privateKey;
-  }
+  // ==========================================
+  // --- EXISTING TRANSACTION LOGIC ---
+  // ==========================================
 
-  // 2. Create the Transaction Data Packet
   Map<String, dynamic> createTransactionPacket({
     required String senderId,
     required String receiverId,
     required double amount,
     required PrivateKey privateKey,
   }) {
-    // A. Create the payload
     final int timestamp = DateTime.now().millisecondsSinceEpoch;
 
     final Map<String, dynamic> transactionData = {
@@ -55,25 +75,16 @@ class WalletService {
       'timestamp': timestamp,
     };
 
-    // B. Convert to string to sign it
     String payloadString = json.encode(transactionData);
-
-    // C. Sign the payload
     String signatureString = _signData(payloadString, privateKey);
 
-    // D. Return the final packet
     return {...transactionData, 'signature': signatureString};
   }
 
-  // Helper: Sign string data
   String _signData(String data, PrivateKey privateKey) {
-    // Hash the data first (SHA-256)
     var bytes = utf8.encode(data);
     var digest = sha256.convert(bytes);
-
-    // FIX: Using the imported 'signature' function from ecdsa.dart
     var sig = signature(privateKey, digest.bytes);
-
     return sig.toASN1Hex();
   }
 }
