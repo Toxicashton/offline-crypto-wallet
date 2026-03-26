@@ -211,7 +211,7 @@ class _WalletScreenState extends State<WalletScreen> {
       }
 
       var packet = _walletService.createTransactionPacket(
-        senderId: _fullPublicKey,
+        senderId: _shortPublicKey,
         receiverId: _receiverController.text.isNotEmpty
             ? _receiverController.text
             : "Unknown_Receiver",
@@ -251,7 +251,7 @@ class _WalletScreenState extends State<WalletScreen> {
       }
 
       var packet = _walletService.createTransactionPacket(
-        senderId: _fullPublicKey,
+        senderId: _shortPublicKey,
         receiverId: _receiverController.text.isNotEmpty
             ? _receiverController.text
             : "Unknown_Receiver",
@@ -318,7 +318,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   void _copyAddressToClipboard() {
-    Clipboard.setData(ClipboardData(text: _fullPublicKey));
+    Clipboard.setData(ClipboardData(text: _shortPublicKey));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Address Copied!"),
@@ -476,7 +476,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   subtitle: Text(
-                    "${_shortPublicKey}...",
+                    "${_shortPublicKey}",
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
