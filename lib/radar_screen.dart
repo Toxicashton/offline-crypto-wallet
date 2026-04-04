@@ -23,6 +23,8 @@ class RadarScreen extends StatefulWidget {
 class _RadarScreenState extends State<RadarScreen> {
   final Strategy strategy =
       Strategy.P2P_CLUSTER; // Best for connecting smartphones
+  // This is the secret handshake. Both phones MUST match this exactly!
+  final String _serviceId = "com.oactf.offline_wallet";
 
   bool _isScanning = false;
   Map<String, String> _discoveredDevices = {}; // Maps endpointId to deviceName
